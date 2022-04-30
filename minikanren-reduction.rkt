@@ -25,8 +25,8 @@
   ; Search Trees
   [s ()
      (g σ)
-     (s ∨ s)
-     (s ∧ g)
+     (s + s)
+     (s × g)
      (delay s)]
 
   ; Goals
@@ -55,7 +55,7 @@
   ;-------------------------------------
   ; Values
   [v              ; Empty Node
-     ((⊤ σ) ∨ v)] ; Answer Disjunct (yuck the letter v and logical or look the same
+     ((⊤ σ) + v)] ; Answer Disjunct (yuck the letter v and logical or look the same
 
   ;-------------------------------------
   ; Evaluation Contexts
@@ -63,12 +63,12 @@
 
   ; Answer Stream
   [Ev hole
-      ((⊤ σ) ∨ Ev)]
+      ((⊤ σ) + Ev)]
 
   ; Search Tree
   [Es hole
-      (Es ∨ s)
-      (Es ∧ g)]
+      (Es + s)
+      (Es × g)]
 
   ; Goal
   [Eg hole
@@ -80,37 +80,41 @@
     #:domain e
 
     [--> (in-hole Ev (in-hole Es ((g_1 ∨ g_2) σ)))
-         (in-hole Ev (in-hole Es ((g_1 σ) ∨ (g_2 σ))))
+         (in-hole Ev (in-hole Es ((g_1 σ) + (g_2 σ))))
          "distribute subst in disj"]
 
     [--> (in-hole Ev (in-hole Es ((g_1 ∧ g_2) σ)))
-         (in-hole Ev (in-hole Es ((g_1 σ) ∧ g_2)))
+         (in-hole Ev (in-hole Es ((g_1 σ) × g_2)))
          "distribute subst over conj"]
 
-    [--> (in-hole Ev (in-hole Es (((⊤ σ_1) ∨ (g_2 σ_2)) ∧ g)))
-         (in-hole Ev (in-hole Es (((⊤ σ_1) ∧ g) ∨ ((g_2 σ_2) ∧ g))))
+    [--> (in-hole Ev (in-hole Es (((⊤ σ_1) + (g_2 σ_2)) × g)))
+         (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g))))
          "distribute disj ans over conj"]
 
-    [--> (in-hole Ev (in-hole Es (((⊤ σ_1) ∨ s) ∨ s_2)))
-         (in-hole Ev (in-hole Es ((⊤ σ_1) ∨ (s ∨ s_2))))
+    [--> (in-hole Ev (in-hole Es (((⊤ σ_1) + s) + s_2)))
+         (in-hole Ev (in-hole Es ((⊤ σ_1) + (s + s_2))))
          "reassociate disj"]
 
     [--> (in-hole Ev (delay s))
          (in-hole Ev s)
          "invoke delay"]
 
-    [--> (in-hole Ev (in-hole Es ((⊤ σ) ∧ g)))
+    [--> (in-hole Ev (in-hole Es ((⊤ σ) × g)))
          (in-hole Ev (in-hole Es (g σ)))
          "bring subst to 2nd conjunct"]
 
-    [--> (in-hole Ev (in-hole Es ((⊥ σ) ∧ g)))
+    [--> (in-hole Ev (in-hole Es ((⊥ σ) × g)))
          (in-hole Ev (in-hole Es (⊥ σ)))
          "prune failure conjuncts"]
 
-    [--> (in-hole Ev (in-hole Es ((⊥ σ) ∨ s)))
+    [--> (in-hole Ev (in-hole Es ((⊥ σ) + s)))
          (in-hole Ev (in-hole Es s))
          "prune failure disjuncts"]
 
+    ;; Consider, if we separate answer streams from search tree
+    ;; disjuncts, then we would need some rule to "move into the
+    ;; answer stream."
+    
     ;; Need to actually implement the fresh nodes, fresh vars and subst for them
 
     [--> (in-hole Ev (in-hole Es ((t_1 =? t_2) σ)))
@@ -139,13 +143,15 @@
          (in-hole Ev (in-hole Es (delay (s ∧ g))))
          "propagate delay through conj"]
 
-    [--> (in-hole Ev (in-hole Es ((delay s_1) ∨ s_2)))
-         (in-hole Ev (in-hole Es (delay (s_2 ∨ s_1))))
+    [--> (in-hole Ev (in-hole Es ((delay s_1) + s_2)))
+         (in-hole Ev (in-hole Es (delay (s_2 + s_1))))
          "propagate delay through disj, and flip"]
 
-    ;; I guess this is right?
-    [--> (in-hole Ev (⊥ σ_2))
-         (in-hole Ev ())
+    ;; I think this is right because it's the equivalent in prolog of
+    ;; a choice point with failure at the end, for no more results.
+    ;; We prune it here rather than leaving it, but could do either
+    [--> (in-hole Ev (in-hole Es ((⊤ σ) + (⊥ σ_2))))
+         (in-hole Ev (in-hole Es (⊤ σ)))
          "prune failure from end"]))
 
 (test-->
@@ -161,30 +167,30 @@
 (test-->>
  red
  (term ((⊤ ((x 3)))
-        ∨
+        +
         ((⊤ ((x 3)))
-         ∨
+         +
          ((⊤ ((x 3)))
-          ∨
+          +
           (((9 =? 9) ((x 3)))
-           ∨
+           +
            ((17 =? 17) ((x 3))))))))
 
  (term ((⊤ ((x 3)))
-        ∨
+        +
         ((⊤ ((x 3)))
-         ∨
+         +
          ((⊤ ((x 3)))
-          ∨
+          +
           ((⊤ ((x 3)))
-           ∨
+           +
            (⊤ ((x 3)))))))))
 
 (test-->>
  red
  (term
-  ((delay ((7 =? 7) ((x 3)))) ∨ (delay ((8 =? 8) ((x 4))))))
- (term ((⊤ ((x 3))) ∨ (⊤ ((x 4))))))
+  ((delay ((7 =? 7) ((x 3)))) + (delay ((8 =? 8) ((x 4))))))
+ (term ((⊤ ((x 3))) + (⊤ ((x 4))))))
 
 (test-->>
  red
@@ -193,25 +199,33 @@
 
 (test-->>
  red
- (term ((⊥ ())  ∨ (⊤ ((x 3)))))
+ (term ((⊥ ()) + (⊤ ((x 3)))))
  (term (⊤ ((x 3)))))
 
 (test-->>
  red
- (term ((⊤ ((x 3))) ∨ (⊥ ())))
- (term ((⊤ ((x 3))) ∨ ())))
+ (term ((⊤ ((x 3))) + (⊥ ())))
+ (term ((⊤ ((x 3))) + ())))
 
 (test-->>
  red
  (term (((delay ((7 =? 7) ((x 3))))
-         ∨ (delay ((8 =? 8) ((x 4)))))
-        ∨ ((9 =? 9) ((x 9)))))
+         + (delay ((8 =? 8) ((x 4)))))
+        + ((9 =? 9) ((x 9)))))
  (term ((⊤ ((x 9)))
-        ∨ ((⊤ ((x 3)))
-           ∨ (⊤ ((x 4)))))))
+        + ((⊤ ((x 3)))
+           + (⊤ ((x 4)))))))
 
 
-;; Is it a problem that these two are not symmetric?
+;; This asymmetry mirrors prolog's behavior re: choice points.
+#|
+?- 7 = 7 ; 6 = 7.
+   true
+;  false.
+?- 6 = 7; 7 = 7.
+   true.
+?- 
+|#
 (test-->>
  red
  (term (((6 =? 7) ∨ (7 =? 7)) ((x 3))))
