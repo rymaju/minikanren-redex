@@ -59,7 +59,6 @@
 
   ;-------------------------------------
   ; Evaluation Contexts
-
   [EΓ (Γ hole)]
 
   ; Answer Stream
@@ -115,7 +114,7 @@
     ;; Need to actually implement the fresh nodes, fresh vars and subst for them
 
     [--> (in-hole Ev (in-hole Es ((t_1 =? t_2) σ)))
-"         (in-hole Ev (in-hole Es (⊤ σ)))"
+         (in-hole Ev (in-hole Es (⊤ σ)))
          ;; faking it
          ;; How do I actually implement a unification here?
          (side-condition (equal? (term t_1) (term t_2)))
@@ -223,23 +222,23 @@
  (term (((7 =? 7) ∨ (6 =? 7)) ((x 3))))
  (term ((⊤ ((x 3))) ∨ ())))
 
-;; (traces red (term (((((⊤
-;;                        ∧ (7 =? 7))
-;;                       ∨ ((8 =? 8)
-;;                          ∧ (9 =? 9)))
-;;                      ∧ ((⊤
-;;                          ∧ (7 =? 7))
-;;                         ∨ ((8 =? 8)
-;;                            ∧ (9 =? 9))))
-;;                     ∨ (((⊤
-;;                          ∧ (7 =? 7))
-;;                         ∨ ((8 =? 8)
-;;                            ∧ (9 =? 9)))
-;;                        ∧ ((⊤
-;;                            ∧ (7 =? 7))
-;;                           ∨ ((8 =? 8)
-;;                              ∧ (9 =? 9)))))
-;;                    ((x 3)))))
+(traces red (term (((((⊤
+                       ∧ (7 =? 7))
+                      ∨ ((8 =? 8)
+                         ∧ (9 =? 9)))
+                     ∧ ((⊤
+                         ∧ (7 =? 7))
+                        ∨ ((8 =? 8)
+                           ∧ (9 =? 9))))
+                    ∨ (((⊤
+                         ∧ (7 =? 7))
+                        ∨ ((8 =? 8)
+                           ∧ (9 =? 9)))
+                       ∧ ((⊤
+                           ∧ (7 =? 7))
+                          ∨ ((8 =? 8)
+                             ∧ (9 =? 9)))))
+                   ((x 3)))))
 
 ;; (traces red (term (((((⊤
 ;;                        ∧ (7 =? 7))
