@@ -111,6 +111,11 @@
          (in-hole Ev (in-hole Es s))
          "prune failure disjuncts"]
 
+    [--> (⊥ σ)
+         ()
+         "prune bald failure"]
+
+    
     ;; Consider, if we separate answer streams from search tree
     ;; disjuncts, then we would need some rule to "move into the
     ;; answer stream."
@@ -205,7 +210,7 @@
 (test-->>
  red
  (term ((⊤ ((x 3))) + (⊥ ())))
- (term ((⊤ ((x 3))) + ())))
+ (term (⊤ ((x 3)))))
 
 (test-->>
  red
@@ -234,7 +239,7 @@
 (test-->>
  red
  (term (((7 =? 7) ∨ (6 =? 7)) ((x 3))))
- (term ((⊤ ((x 3))) ∨ ())))
+ (term (⊤ ((x 3)))))
 
 (traces red (term (((((⊤
                        ∧ (7 =? 7))
