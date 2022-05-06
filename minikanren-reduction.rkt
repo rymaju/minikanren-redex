@@ -1,6 +1,7 @@
 #lang racket
 (require redex redex/gui)
 (require redex/reduction-semantics)
+(require rackunit)
 
 ;; Consider, if we separate answer streams from search tree
 ;; disjuncts, then we would need some rule to "move into the
@@ -10,13 +11,9 @@
 ;; instead the one and only call to an initial, implicitly define
 ;; defrel called "main".
 
-; copy the number metafunction thingy for logic vars
-; maybe σ = (((x y) ... counter)
-
 (define-language L
   [p ::= (prog Γ e)] ; Programs, Relation Environments, and Relations
-  [Γ ((r b) ...)]    ; 
-  [b (lam x g)]          ;
+  [Γ ((r_!_ x g) ...)] ;  I think this ensures that 'ri's are distinct
   ;------------------------------------
   ; Expressions
   [e ::=
@@ -42,14 +39,14 @@
 
   ;Terms
   [t c
-     o ;; for other, change to make c constant and i number 
+     o ;; for other, change to make c constant and i natural 
      x
      (t : t)]
 
   ;Other
   [r variable-not-otherwise-mentioned] ; to account for arbitrary relation names
   [x variable-not-otherwise-mentioned] ; to account for arbitrary parameter names
-  [c number]
+  [c natural]
   [o symbol
      boolean
      string]
@@ -81,8 +78,7 @@
       (Eg ∨ g)]
   #:binding-forms
   (∃ x g #:refers-to x)
-  (lam x g #:refers-to x)
-  (prog ((r b) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
+  (prog ((r x g #:refers-to x) ...) #:refers-to (shadow r ...) e #:refers-to (shadow r ...)))
 
 (define red
   (reduction-relation L
@@ -119,16 +115,16 @@
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ σ) + s))))
          (in-hole EΓ (in-hole Ev (in-hole Es s)))
          "prune failure disjuncts"]
-    
-    ;; Need to actually implement the fresh nodes, fresh vars and subst for them
 
-    ;; Need some way to describe the gensym'd values and the non-gensym'd values
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x g) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (g σ)))) ;; (in-hole Ev (in-hole Es (g_1 (state sub c_1))))
-         "fresh subst"
-         ;; (where c_1 (term 5))
-         ;; (where g_1 (term (7 =? 7)))
-         ]
+    ;; Need to figure out how to increment the var counter. Could do Peano, but Meh.
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x g) (state sub c)))))
+         (in-hole EΓ (in-hole Ev (in-hole Es ((substitute g x c) (state sub c)))))
+         ;; (where c1 (incr c))
+         "fresh subst"]
+
+    [--> (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
+         (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute g_1 x_1 t) σ)))))
+         "substitute through and add subst"]
 
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) σ))))
          (in-hole EΓ (in-hole Ev (in-hole Es (⊤ σ))))
@@ -143,14 +139,6 @@
          ;; How do I actually implement a unification here?
          (side-condition (not (equal? (term t_1) (term t_2))))
          "unify fails"]
-
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((r t) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (delay (g σ)))))
-         ;; How do I hard-code a fake relation definition here?
-         ;; How do I actually execute the lookup and subst through behavior here?
-         ;; (judgment-holds (lookup-and-subst-through r Γ t g))
-         ;; should find definition of r in Γ (of the form `(x g)`), subst through t for x, and use that as the body w/gamma
-         "substitute through and add subst"]
 
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
          (in-hole EΓ (in-hole Ev (in-hole Es (delay (s ∧ g)))))
@@ -171,97 +159,62 @@
          (in-hole EΓ (in-hole Ev ()))
          "prune bald failure"]))
 
-;; (redex-match 
-;;  L
-;;  s            
-;;  (term 
-;;   (⊤
-;;    (state
-;;     ((x 3))
-;;     0))))
+;; (define-metafunction L
+;;   incr : c -> c
+;;   [(incr c) (term (add1 c))])
 
-;; (redex-match? L (in-hole Es hole)
-;;  (apply-reduction-relation
-;;   red (term ((7 =? 7) (state () 0)))))
+;; (redex-match? L g (term (∃ x (x =? 7))))
+;; (redex-match? L σ (term (state () 0)))
+;; (redex-match? L s (term ((∃ x (x =? 7)) (state () 0))))
+;; (redex-match? L e (term ((∃ x (x =? 7)) (state () 0))))
 
-;; (pretty-print "Below is the term we expect to produce.")
-;; (term (⊤ (state () 0)))
-
-;; (pretty-print "Here is the test where we claim we produce it.")
-;; (test--> 
-;;  red
-;;  (term ((∃ x (7 =? 7)) (state () 0)))
-;;  (term (⊤ (state () 0))))
-
-;; (pretty-print "Curiously, though, the first goes to the second, and
-;; the second goes to the third.")
-;; (test--> 
-;;  red
-;;  (term ((∃ x (7 =? 7)) (state () 0)))
-;;  (term ((7 =? 7) (state () 0))))
-;; (test--> 
-;;  red
-;;  (term ((7 =? 7) (state () 0)))
-;;  (term (⊤ (state () 0))))
-
-;; (pretty-print "Curiously, though, traces says otherwise. Watch.")
-;; (traces
-;;  red
-;;  (term ((∃ x (7 =? 7)) (state () 0))))
-
-;; (pretty-print "This seems to go wrong at the existential reduction---a
-;; consequence of \"fresh subst\" or how and where we apply it. If we add
-;; extra layers, it always fails, returning instead the result of the
-;; first reduction.")
-;; (test-->
-;;  red
-;;  (term ((∃ y (∃ z (∃ x (7 =? 7)))) (state () 0)))
-;;  (term (⊤ (state () 0))))
-
-;; (traces
-;;  red
-;;  (term ((∃ y (∃ z (∃ x (7 =? 7)))) (state () 0))))
-
-;; (pretty-print "Deceptively, it *looks* like we get an extra set of
-;; parens, and like that would explain the failure. But I don't think
-;; that's the real problem.")
-;; (apply-reduction-relation*
-;;  red
-;;  (term ((∃ x (7 =? 7)) (state () 0))))
-
-;; (pretty-print "I think somehow that we're getting those extra parens
-;; because it's giving back a list of answers, maybe")
-
-
-(redex-match? L g (term (∃ x (x =? 7))))
-(redex-match? L σ (term (state () 0)))
-(redex-match? L s (term ((∃ x (x =? 7)) (state () 0))))
-(redex-match? L e (term ((∃ x (x =? 7)) (state () 0))))
-
-;; Instead I am getting an extra set of parens around this one.
-;; '(((7 =? 7) (state () 0)))
-(test-->
- red
- (term (prog ()  ((7 =? 7) (state () 0))))
- (term (prog ()  (⊤ (state () 0)))))
-
-(test-->
- red
- (term (prog ()  ((∃ x ⊤) (state () 0))))
- (term (prog ()  (⊤ (state () 0)))))
-
-(traces
- red
- (term (prog ()  ((∃ x (7 =? 7)) (state () 0)))))
-
-(test-->
- red
- (term (prog ()  ((7 =? 7) (state ((x 2)) 0))))
- (term (prog ()  (⊤ (state ((x 2)) 0)))))
 
 (test-->>
  red
- (term (prog ()  ((⊤ (state ((x 3)) 0))
+ (term (prog () ((7 =? 7) (state () 0))))
+ (term (prog () (⊤ (state () 0)))))
+
+;; (test-->>
+;;  red
+;;  (term (prog () ((∃ x ⊤) (state () 0))))
+;;  (term (prog () (⊤ (state () 0)))))
+
+(redex-match L
+  (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
+  (term (prog ((foo x (7 =? 7))) ((foo 7) (state () 0)))))
+
+(apply-reduction-relation* red (term (prog ((foo x (7 =? 7))) ((foo 7) (state () 0)))))
+
+(module+ test
+  (test-true "Small relation lookup matches reduction pattern"
+   (redex-match? L
+     (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
+     (term (prog ((foo x (7 =? 7))) ((foo 7) (state () 0)))))))
+
+(test-->> 
+ red
+ #:equiv (curry alpha-equivalent? L)
+ (term (prog ((foo x (7 =? 7))) ((foo 7) (state () 0))))
+ (term (prog ((foo x (7 =? 7))) (⊤ (state () 0)))))
+
+(traces
+ red
+ (term (prog ((foo x (7 =? 7))) ((foo 7) (state () 0)))))
+
+(traces
+ red
+ (term (prog () ((∃ x (7 =? 7)) (state () 0)))))
+
+(test-->>
+ red
+ #:equiv (curry alpha-equivalent? L)
+ (term (prog () ((7 =? 7) (state ((x 2)) 0))))
+ (term (prog () (⊤ (state ((x 2)) 0)))))
+
+(test-->>
+ red
+ #:equiv (curry alpha-equivalent? L)
+ (term (prog () ((⊤ (state ((x 3)) 0))
          +
          ((⊤ (state ((x 3)) 0))
           +
@@ -271,7 +224,7 @@
             +
             ((17 =? 17) (state ((x 3)) 0))))))))
 
- (term (prog ()  ((⊤ (state ((x 3)) 0))
+ (term (prog () ((⊤ (state ((x 3)) 0))
          +
          ((⊤ (state ((x 3)) 0))
           +
@@ -284,30 +237,30 @@
 (test-->>
  red
  (term
-  (prog ()  ((delay ((7 =? 7) (state ((x 3)) 0))) + (delay ((8 =? 8) (state ((x 4)) 0))))))
- (term (prog ()  ((⊤ (state ((x 3)) 0)) + (⊤ (state ((x 4)) 0))))))
+  (prog () ((delay ((7 =? 7) (state ((x 3)) 0))) + (delay ((8 =? 8) (state ((x 4)) 0))))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + (⊤ (state ((x 4)) 0))))))
 
 (test-->>
  red
- (term (prog ()  ((6 =? 7) (state ((x 3)) 0))))
- (term (prog ()  ())))
+ (term (prog () ((6 =? 7) (state ((x 3)) 0))))
+ (term (prog () ())))
 
 (test-->>
  red
- (term (prog ()  ((⊥ (state () 0)) + (⊤ (state ((x 3)) 0)))))
- (term (prog ()  (⊤ (state ((x 3)) 0)))))
+ (term (prog () ((⊥ (state () 0)) + (⊤ (state ((x 3)) 0)))))
+ (term (prog () (⊤ (state ((x 3)) 0)))))
 
 (test-->>
  red
- (term (prog ()  ((⊤ (state ((x 3)) 0)) + (⊥ (state ((x 4)) 0)))))
- (term (prog ()  ((⊤ (state ((x 3)) 0)) + ()))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + (⊥ (state ((x 4)) 0)))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + ()))))
 
 (test-->>
  red
- (term (prog ()  (((delay ((7 =? 7) (state ((x 3)) 0)))
+ (term (prog () (((delay ((7 =? 7) (state ((x 3)) 0)))
           + (delay ((8 =? 8) (state ((x 4)) 0))))
          + ((9 =? 9) (state ((x 9)) 0)))))
- (term (prog ()  ((⊤ (state ((x 9)) 0))
+ (term (prog () ((⊤ (state ((x 9)) 0))
          + ((⊤ (state ((x 3)) 0))
             + (⊤ (state ((x 4)) 0)))))))
 
@@ -323,33 +276,37 @@
 |#
 (test-->>
  red
- (term (prog ()  (((6 =? 7) ∨ (7 =? 7)) (state ((x 3)) 0))))
- (term (prog ()  (⊤ (state ((x 3)) 0)))))
+ (term (prog () (((6 =? 7) ∨ (7 =? 7)) (state ((x 3)) 0))))
+ (term (prog () (⊤ (state ((x 3)) 0)))))
 
 (test-->>
  red
- (term (prog ()  (((7 =? 7) ∨ (6 =? 7)) (state ((x 3)) 0))))
- (term (prog ()  ((⊤ (state ((x 3)) 0)) + ()))))
+ (term (prog () (((7 =? 7) ∨ (6 =? 7)) (state ((x 3)) 0))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + ()))))
 
-(test-->> red (term (prog ()  (((((⊤
-                          ∧ (7 =? 7))
-                         ∨ ((8 =? 8)
-                            ∧ (9 =? 9)))
-                        ∧ ((⊤
-                            ∧ (7 =? 7))
-                           ∨ ((8 =? 8)
-                              ∧ (9 =? 9))))
-                       ∨ (((⊤
-                            ∧ (7 =? 7))
-                           ∨ ((8 =? 8)
-                              ∧ (9 =? 9)))
-                          ∧ ((⊤
-                              ∧ (7 =? 7))
-                             ∨ ((8 =? 8)
-                                ∧ (9 =? 9)))))
-                      (state ((x 3)) 0))))
-          (term 
-           (prog ()  ((⊤ (state ((x 3)) 0))
+(test-->>
+ red
+ (term (prog () (((((⊤
+                     ∧ (7 =? 7))
+                    ∨ ((8 =? 8)
+                       ∧ (9 =? 9)))
+                   ∧ ((⊤
+                       ∧ (7 =? 7))
+                      ∨ ((8 =? 8)
+                         ∧ (9 =? 9))))
+                  ∨ (((⊤
+                       ∧ (7 =? 7))
+                      ∨ ((8 =? 8)
+                         ∧ (9 =? 9)))
+                     ∧ ((⊤
+                         ∧ (7 =? 7))
+                        ∨ ((8 =? 8)
+                           ∧ (9 =? 9)))))
+                 (state ((x 3)) 0))))
+ (term 
+  (prog () ((⊤ (state ((x 3)) 0))
+            +
+            ((⊤ (state ((x 3)) 0))
              +
              ((⊤ (state ((x 3)) 0))
               +
@@ -361,12 +318,10 @@
                  +
                  ((⊤ (state ((x 3)) 0))
                   +
-                  ((⊤ (state ((x 3)) 0))
-                   +
-                   (⊤
-                    (state
-                     ((x 3))
-                     0))))))))))))
+                  (⊤
+                   (state
+                    ((x 3))
+                    0))))))))))))
 
 ;; (traces red (term (((((⊤
 ;;                        ∧ (7 =? 7))
