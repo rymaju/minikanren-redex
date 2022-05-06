@@ -3,7 +3,6 @@
 (require redex/reduction-semantics)
 (require rackunit)
 
-
 ;; Need to fix the real-subst fake-subst situation, and make sure that
 ;; I have some solution for what to do when I fail a unification.
 
@@ -11,9 +10,9 @@
 ;; disjuncts, then we would need some rule to "move into the
 ;; answer stream."
 
-;; It might be clearer to think about this as though the query is
-;; instead the one and only call to an initial, implicitly define
-;; defrel called "main".
+;; I could also think about this as though the query is instead the
+;; one and only call to an initial, implicitly define defrel called
+;; "main".
 
 (define-language L
   [p ::= (prog Γ e)] ; Programs, Relation Environments, and Relations
@@ -27,6 +26,7 @@
 
   ; Search Trees
   [s ()
+     (⊥ #f)
      (g σ)
      (s + s)
      (s × g)
@@ -55,8 +55,8 @@
      boolean
      string]
   [σ (state sub c)] ;; Not modeling fresh variable introduction
-  [sub true-sub #f]
-  [true-sub ((x t) ...) #f]
+  [sub ((x t) ...)]
+  [maybe-sub sub #f]
   
   ;-------------------------------------
   ; Values
@@ -129,9 +129,8 @@
          (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute g_1 x_1 t) σ)))))
          "substitute through and add delay"]
 
-         ;; How do I actually implement a unification here?
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (state (⊤ (unify (walk t_1 sub) (walk t_2 sub) sub)) c))))
+         (in-hole EΓ (in-hole Ev (in-hole Es (⊤ (state (unify (walk t_1 sub) (walk t_2 sub) sub) c)))))
          (where ((x t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
          "unify succeed"]
 
@@ -152,16 +151,16 @@
     ;; I think this is right because it's the equivalent in prolog of
     ;; a choice point with failure at the end, for no more results.
     ;; We prune it here rather than leaving it, but could do either
-    [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ σ_2))))
-         (in-hole EΓ (in-hole Ev ((⊤ σ) + ())))
-         "prune failure from end"]
+    ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
+    ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
+    ;;      "prune failure from end"]
 
-    [--> (in-hole EΓ (in-hole Ev (⊥ σ)))
+    [--> (in-hole EΓ (in-hole Ev (⊥ #f)))
          (in-hole EΓ (in-hole Ev ()))
          "prune bald failure"]))
 
 (define-metafunction L
-  unify : t t sub -> ?sub
+  unify : t t sub -> maybe-sub
   [(unify x x sub) sub]
   [(unify x t sub) (ext x t sub)]
   [(unify t x sub) (ext x t sub)]
@@ -177,7 +176,7 @@
   [(walk t _) t])
 
 (define-metafunction L
-  ext : x t sub -> ?sub
+  ext : x t sub -> maybe-sub
   [(ext x t sub) ([x t] ,@(term sub))
    (side-condition (not (term (occurs? x t sub))))]
   [(ext _ _ _) #f])
@@ -273,13 +272,19 @@
 
 (test-->>
  red
- (term (prog () ((⊥ (state () 0)) + (⊤ (state ((x 3)) 0)))))
+ (term (prog () ((⊥ #f) + (⊤ (state ((x 3)) 0)))))
  (term (prog () (⊤ (state ((x 3)) 0)))))
 
 (test-->>
  red
- (term (prog () ((⊤ (state ((x 3)) 0)) + (⊥ (state ((x 4)) 0)))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + (⊥ #f))))
  (term (prog () ((⊤ (state ((x 3)) 0)) + ()))))
+
+(test-->>
+ red
+ (term (prog () ((⊤ (state ((x 3)) 0)) + (⊥ #f))))
+ (term (prog () ((⊤ (state ((x 3)) 0)) + ()))))
+
 
 (test-->>
  red
@@ -305,10 +310,10 @@
  (term (prog () (((6 =? 7) ∨ (7 =? 7)) (state ((x 3)) 0))))
  (term (prog () (⊤ (state ((x 3)) 0)))))
 
-(test-->>
- red
- (term (prog () (((7 =? 7) ∨ (6 =? 7)) (state ((x 3)) 0))))
- (term (prog () ((⊤ (state ((x 3)) 0)) + ()))))
+;; (test-->>
+;;  red
+;;  (term (prog () (((7 =? 7) ∨ (6 =? 7)) (state ((x 3)) 0))))
+;;  (term (prog () ((⊤ (state ((x 3)) 0))))))
 
 (test-->>
  red
