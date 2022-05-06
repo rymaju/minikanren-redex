@@ -3,6 +3,10 @@
 (require redex/reduction-semantics)
 (require rackunit)
 
+
+;; Need to fix the real-subst fake-subst situation, and make sure that
+;; I have some solution for what to do when I fail a unification.
+
 ;; Consider, if we separate answer streams from search tree
 ;; disjuncts, then we would need some rule to "move into the
 ;; answer stream."
@@ -51,7 +55,8 @@
      boolean
      string]
   [σ (state sub c)] ;; Not modeling fresh variable introduction
-  [sub ((x t) ...)]
+  [sub true-sub #f]
+  [true-sub ((x t) ...) #f]
   
   ;-------------------------------------
   ; Values
@@ -96,8 +101,8 @@
          (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) × g) + ((g_2 σ_2) × g)))))
          "distribute disj ans over conj"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ_1) + s) + s_2))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ_1) + (s + s_2)))))
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es (((⊤ σ) + s) + s_2))))
+         (in-hole EΓ (in-hole Ev (in-hole Es ((⊤ σ) + (s + s_2)))))
          "reassociate disj"]
 
     [--> (in-hole EΓ (in-hole Ev (delay s)))
@@ -108,36 +113,32 @@
          (in-hole EΓ (in-hole Ev (in-hole Es (g σ))))
          "bring subst to 2nd conjunct"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ σ) × g))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) × g))))
+         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
          "prune failure conjuncts"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ σ) + s))))
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((⊥ #f) + s))))
          (in-hole EΓ (in-hole Ev (in-hole Es s)))
          "prune failure disjuncts"]
 
-    ;; Need to figure out how to increment the var counter. Could do Peano, but Meh.
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((∃ x g) (state sub c)))))
-         (in-hole EΓ (in-hole Ev (in-hole Es ((substitute g x c) (state sub c)))))
-         ;; (where c1 (incr c))
+         (in-hole EΓ (in-hole Ev (in-hole Es ((substitute g x c) (state sub ,(add1 (term c)))))))
          "fresh subst"]
 
     [--> (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
          (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es (delay ((substitute g_1 x_1 t) σ)))))
-         "substitute through and add subst"]
+         "substitute through and add delay"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊤ σ))))
-         ;; faking it
          ;; How do I actually implement a unification here?
-         (side-condition (equal? (term t_1) (term t_2)))
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
+         (in-hole EΓ (in-hole Ev (in-hole Es (state (⊤ (unify (walk t_1 sub) (walk t_2 sub) sub)) c))))
+         (where ((x t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
          "unify succeed"]
 
-    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) σ))))
-         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
-         ;; faking it
          ;; How do I actually implement a unification here?
-         (side-condition (not (equal? (term t_1) (term t_2))))
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
+         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
+         (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
          "unify fails"]
 
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((delay s) ∧ g))))
@@ -159,15 +160,40 @@
          (in-hole EΓ (in-hole Ev ()))
          "prune bald failure"]))
 
-;; (define-metafunction L
-;;   incr : c -> c
-;;   [(incr c) (term (add1 c))])
+(define-metafunction L
+  unify : t t sub -> ?sub
+  [(unify x x sub) sub]
+  [(unify x t sub) (ext x t sub)]
+  [(unify t x sub) (ext x t sub)]
+  [(unify (t_1a : t_1b) (t_2a : t_2b) sub)
+   (unify t_1b t_2b sub_1)
+   (where sub_1 (unify t_1a t_2a sub))]
+  [(unify t t sub) sub]
+  [(unify _ _ _) #f])
+
+(define-metafunction L
+  walk : t sub -> t
+  [(walk x (name sub (_ ... [x t] _ ...))) (walk t sub)]
+  [(walk t _) t])
+
+(define-metafunction L
+  ext : x t sub -> ?sub
+  [(ext x t sub) ([x t] ,@(term sub))
+   (side-condition (not (term (occurs? x t sub))))]
+  [(ext _ _ _) #f])
+
+(define-relation L
+  occurs? ⊆ x × t × sub
+  [(occurs? x (t : _) sub) (occurs? x t sub)]
+  [(occurs? x (_ : t) sub) (occurs? x t sub)]
+  [(occurs? x x sub)])
+
+(redex-match? L sub (term ()))
 
 ;; (redex-match? L g (term (∃ x (x =? 7))))
 ;; (redex-match? L σ (term (state () 0)))
 ;; (redex-match? L s (term ((∃ x (x =? 7)) (state () 0))))
 ;; (redex-match? L e (term ((∃ x (x =? 7)) (state () 0))))
-
 
 (test-->>
  red
