@@ -14,7 +14,7 @@
 ;; "main".
 
 (define-language L
-  [p ::= (prog Γ e)] ; Programs, Relation Environments, and Relations
+  [p ::= (prog Γ e)]   ; Programs, Relation Environments, and Relations
   [Γ ((r_!_ x g) ...)] ; Ensure that 'ri's are distinct
   ;------------------------------------
   ; Expressions
@@ -88,7 +88,7 @@
 
 (module+ test
 
-  ;; FAILS
+  ;; FAILS 
   ;; "bald symbols are terms"
   ;; (redex-match? L t (term cat))
 
@@ -152,18 +152,18 @@
   (redex-match?
    L
    p
-   (term (prog ((r:add x:x (∃ x:a
-                              (∃ x:d
-                                 ((x:x =? (x:a : x:d))
-                                  ∧ (((x:a =? "z")
-                                      ∧ (x:d =? ("s" : "z")))
-                                     ∨ (∃ x:a2
-                                          (∃ x:d2
-                                             (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
-                                              ∧ (r:add (x:a2 : x:d2)))))))))))
-               ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
-
-
+   (term
+    (prog
+     ((r:add x:x (∃ x:a
+                    (∃ x:d
+                       ((x:x =? (x:a : x:d))
+                        ∧ (((x:a =? "z")
+                            ∧ (x:d =? ("s" : "z")))
+                           ∨ (∃ x:a2
+                                (∃ x:d2
+                                   (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
+                                    ∧ (r:add (x:a2 : x:d2)))))))))))
+     ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
   )
 
 (define-metafunction L
@@ -576,8 +576,6 @@
    red
    (term (prog () ((∃ x:x ("seven" =? "seven")) (⊤ (state () 0))))))
 
-  
-
 (traces
  red
  (term
@@ -593,7 +591,6 @@
                                (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                 ∧ (r:add (x:a2 : x:d2)))))))))))
    ((∃ x:y (r:add ("z" : x:y))) (state () 0)))))
-
 
   (traces red (term (((((⊤
                          ∧ ("seven" =? "seven"))
