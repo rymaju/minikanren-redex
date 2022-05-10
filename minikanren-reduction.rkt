@@ -42,7 +42,7 @@
 
   ;Terms
   [t c
-     o ;; for "other", change to make c constant and n natural 
+     o ;; for "other", change to make c constant and n natural
      x
      (t : t)]
 
@@ -56,7 +56,7 @@
   [σ (state sub c)] ;; Not modeling fresh variable introduction
   [sub ((natural t) ...)]
   [maybe-sub sub #f]
-  
+
   ;-------------------------------------
   ; Values
   [v ()        ; Empty Node
@@ -88,66 +88,78 @@
 
 (module+ test
 
-  ;; FAILS 
+  ;; FAILS
   ;; "bald symbols are terms"
   ;; (redex-match? L t (term cat))
 
-  "bald numbers are terms"
-  (redex-match? L t (term 5))
+  (test-true
+   "bald numbers are terms"
+   (redex-match? L t (term 5)))
 
-  "booleans are terms"
-  (redex-match? L t (term #t))
+  (test-true
+   "booleans are terms"
+   (redex-match? L t (term #t)))
 
-  "strings are terms"
-  (redex-match? L t (term "cat"))
+  (test-true
+   "strings are terms"
+   (redex-match? L t (term "cat")))
 
-  "a fresh call over an equation is a goal"
-  (redex-match? L g (term (∃ x:x (x:x =? "seven"))))
+  (test-true
+   "a fresh call over an equation is a goal"
+   (redex-match? L g (term (∃ x:x (x:x =? "seven")))))
 
   (redex-match? L sub (term ()))
 
   (redex-match? L σ (term (state () 0)))
 
-  "A goal w/a state is a search tree"
-  (redex-match? L s (term ((∃ x:x (x:x =? "seven")) (state () 0))))
+  (test-true
+   "A goal w/a state is a search tree"
+   (redex-match? L s (term ((∃ x:x (x:x =? "seven")) (state () 0)))))
 
-  "A goal w/a state is a query expression"
-  (redex-match? L e (term ((∃ x:x (x:x =? "seven")) (state () 0))))
+  (test-true
+   "A goal w/a state is a query expression"
+   (redex-match? L e (term ((∃ x:x (x:x =? "seven")) (state () 0)))))
 
   (redex-match?
    L
    p
-   (term 
+   (term
     (prog ((r:add x:x (x:x =? "cat"))) ())))
 
-  "matching a small unify program with symbol constants"
-  (redex-match? L p (term (prog () (("cat" =? "cat") (state () 0)))))
+  (test-true
+   "matching a small unify program with symbol constants"
+   (redex-match? L p (term (prog () (("cat" =? "cat") (state () 0))))))
 
-  "matching a small unify program with symbol constants and non-empty subst"
-  (redex-match?
-   L 
-   p              
-   (term (prog () (("seven" =? "seven") (state ((2 "fish")) 0)))))
+  (test-true
+   "matching a small unify program with symbol constants and non-empty subst"
+   (redex-match?
+    L
+    p
+    (term (prog () (("seven" =? "seven") (state ((2 "fish")) 0))))))
 
-  "matching a program w a relation"
-  (redex-match?
-   L
-   p
-   (term 
-    (prog ((r:add x:x (x:x =? "cat"))) (⊤ (state () 0)))))
+  (test-true
+   "matching a program w a relation"
+   (redex-match?
+    L
+    p
+    (term
+     (prog ((r:add x:x (x:x =? "cat"))) (⊤ (state () 0))))))
 
-  "matching a full program with a relation call"
-  (redex-match?
-   L
-   p
-   (term 
-    (prog ((r:add x:x (x:x =? "cat"))) ((r:add "dog") (state () 0)))))
+  (test-true
+   "matching a full program with a relation call"
+   (redex-match?
+    L
+    p
+    (term
+     (prog ((r:add x:x (x:x =? "cat"))) ((r:add "dog") (state () 0))))))
 
-  "Small relation lookup matches reduction pattern"
-  (redex-match?
-   L 
-   (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
-   (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0)))))
+  (test-true
+   "Small relation lookup matches reduction pattern"
+   (redex-match?
+    L
+    (prog ((r_0 x_0 g_0) ... (r_1 x_1 g_1) (r_2 x_2 g_2) ...) (in-hole Ev (in-hole Es ((r_1 t) σ))))
+    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0))))))
+
 
   (redex-match?
    L
@@ -164,7 +176,9 @@
                                    (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
                                     ∧ (r:add (x:a2 : x:d2)))))))))))
      ((∃ x:y (r:add (("s" : ("s" : ("s" : "z"))) : x:y))) (state () 0)))))
-  )
+
+
+  (test-results))
 
 (define-metafunction L
   unify : t t sub -> maybe-sub
@@ -200,7 +214,7 @@
   (test-equal
    (term (unify "seven" "seven" ((2 "fish"))))
    (term ((2 "fish"))))
-  
+
   (test-equal
    (term (unify 0 0 ()))
    (term ()))
@@ -212,7 +226,7 @@
   (test-equal
    (term (unify "cat" 0 ()))
    (term ((0 "cat"))))
-  
+
   (test-equal
    (term (walk 0 ((1 "cat") (0 "dog"))))
    (term "dog"))
@@ -226,9 +240,11 @@
     (unify (walk (1 : 2) ((0 2) (1 "z")))
            (walk (("s" : 3) : ("s" : 4)) ((0 2) (1 "z")))
            ((0 2) (1 "z"))))
-    (term #f)))
+   (term #f))
 
-(define red 
+  (test-results))
+
+(define red
   (reduction-relation L
     #:domain p
 
@@ -292,7 +308,7 @@
 
     ;; I think this is right because it's the equivalent in prolog of
     ;; a choice point with failure at the end, for no more results.
-    ;; We prune it here rather than leaving it, but could do either
+    ;; We could prune it or leave it here, either way
     ;; [--> (in-hole EΓ (in-hole Ev ((⊤ σ) + (⊥ #f))))
     ;;      (in-hole EΓ (in-hole Ev (⊤ σ)))
     ;;      "prune failure from end"]
@@ -301,7 +317,7 @@
          (in-hole EΓ (in-hole Ev ()))
          "prune bald failure"]))
 
-(module+ test 
+(module+ test
   (test-->>
    red
    (term (prog () (("seven" =? "seven") (state () 0))))
@@ -317,7 +333,7 @@
    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0))))
    (term (prog ((r:foo x:x ("seven" =? "seven"))) (⊤ (state () 0)))))
 
-  (test-->> 
+  (test-->>
    red
    #:equiv alpha-equivalent?
    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0))))
@@ -329,15 +345,15 @@
    (term (prog () (("seven" =? "seven") (state ((2 "fish")) 0))))
    (term (prog () (⊤ (state ((2 "fish")) 0)))))
 
-  ;; Tests substitution doesn't subst constants 
+  ;; Tests substitution doesn't subst constants
 
 
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term 
+   (term
     (prog ((r:add x:x (x:x =? "cat"))) ((r:add "dog") (state () 0))))
-   (term 
+   (term
     (prog ((r:add x:x (x:x =? "cat"))) ())))
 
   (test-->>
@@ -376,8 +392,8 @@
 
   (test-->>
    red
-   (term (prog () ((⊥ #f) + (⊤ (state ((3 "fish")) 0)))))
-   (term (prog () (⊤ (state ((3 "fish")) 0)))))
+   (term (prog () ((⊥ #f) + (⊤ (state ((3 "boba-tea")) 0)))))
+   (term (prog () (⊤ (state ((3 "boba-tea")) 0)))))
 
   (test-->>
    red
@@ -406,17 +422,17 @@
   ;  false.
   ?- 6 = 7; 7 = 7.
   true.
-  ?- 
+  ?-
   |#
   (test-->>
    red
-   (term (prog () ((("six" =? "seven") ∨ ("seven" =? "seven")) (state ((3 "fish")) 0))))
-   (term (prog () (⊤ (state ((3 "fish")) 0)))))
+   (term (prog () ((("six" =? "seven") ∨ ("seven" =? "seven")) (state ((3 "hat")) 0))))
+   (term (prog () (⊤ (state ((3 "hat")) 0)))))
 
-  ;; (test-->>
-  ;;  red
-  ;;  (term (prog () ((("seven" =? "seven") ∨ ("six" =? "seven")) (state ((3 "fish")) 0))))
-  ;;  (term (prog () ((⊤ (state ((3 "fish")) 0))))))
+  (test-->>
+   red
+   (term (prog () ((("seven" =? "seven") ∨ ("six" =? "seven")) (state ((3 "gerbil")) 0))))
+   (term (prog () ((⊤ (state ((3 "gerbil")) 0)) + ()))))
 
   (test-->>
    red
@@ -437,7 +453,7 @@
                           ∨ (("eight" =? "eight")
                              ∧ ("nine" =? "nine")))))
                    (state ((3 "fish")) 0))))
-   (term 
+   (term
     (prog () ((⊤ (state ((3 "fish")) 0))
               +
               ((⊤ (state ((3 "fish")) 0))
@@ -459,7 +475,7 @@
 
   (test-->>
    red
-   (term 
+   (term
     (prog ((r:add x:x (∃ x:a
                          (∃ x:d
                             ((x:x =? (x:a : x:d))
@@ -485,7 +501,7 @@
 
   (test-->>
    red
-   (term 
+   (term
     (prog ((r:add x:x (∃ x:a (x:a =? x:x))))
           ((∃ x:y (r:add (("s" : "z") : x:y)))
            (state () 0))))
@@ -493,12 +509,12 @@
     (prog ((r:add x:x (∃ x:a (x:a =? x:x))))
           (⊤ (state ((1 (("s" : "z") : 0))) 2)))))
 
-  ;; Questionable test right now 
+  ;; Questionable test right now
   (test-->>
    red
    #:equiv alpha-equivalent?
-   (term 
-    (prog 
+   (term
+    (prog
      ((r:add x:x (∃ x:a
                     (∃ x:d
                        (x:x =? (x:a : x:d))))))
@@ -506,11 +522,12 @@
       (state () 0))))
    (term (prog
           ((r:add x:x (∃ x:a (∃ x:d (x:x =? (x:a : x:d))))))
-          ((⊤ (state ((2 ("s" : "z")) (0 2) (1 "z")) 3)) + ()))))
+          (⊤ (state ((0 2) (1 ("s" : ("s" : ("s" : "z"))))) 3)))))
 
   ;; This test seems too slow or not working. Test.
   (test-->>
    red
+   #:equiv alpha-equivalent?
    (term
     (prog
      ((r:add x:x
@@ -556,72 +573,79 @@
        15))
      +
      ()))))
-  
-  )
+
+  (test-results))
 
 
-#;
+
 (module+ traces
   (traces
    red
    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0)))))
 
-  ;; This is a state mid-run 
+  ;; This is a state mid-run
   (traces
    red
-   (term (prog () ((∃ x:x ("seven" =? "seven")) (⊤ (state () 0))))))
+   (term (prog () (((∃ x:x ("seven" =? "seven")) (state () 0)) + (⊤ (state () 0))))))
 
-  ;; This is a state mid-run 
+  ;; This is a state mid-run
   (traces
    red
-   (term (prog () ((∃ x:x ("seven" =? "seven")) (⊤ (state () 0))))))
+   (term (prog () (((∃ x:x ("seven" =? "seven")) ∨ ⊤) (state () 0)))))
 
-(traces
- red
- (term
-  (prog
-   ((r:add x:x
-           (∃ x:a
-              (∃ x:d ((x:x =? (x:a : x:d))
-                      ∧
-                      (((x:a =? "z")
-                        ∧ (x:d =? ("s" : "z")))
-                       ∨ (∃ x:a2
-                            (∃ x:d2
-                               (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
-                                ∧ (r:add (x:a2 : x:d2)))))))))))
-   ((∃ x:y (r:add ("z" : x:y))) (state () 0)))))
+  (traces
+   red
+   (term
+    (prog
+     ((r:add x:x
+             (∃ x:a
+                (∃ x:d ((x:x =? (x:a : x:d))
+                        ∧
+                        (((x:a =? "z")
+                          ∧ (x:d =? ("s" : "z")))
+                         ∨ (∃ x:a2
+                              (∃ x:d2
+                                 (((x:a : x:d) =? (("s" : x:a2) : ("s" : x:d2)))
+                                  ∧ (r:add (x:a2 : x:d2)))))))))))
+     ((∃ x:y (r:add ("z" : x:y))) (state () 0)))))
 
-  (traces red (term (((((⊤
-                         ∧ ("seven" =? "seven"))
-                        ∨ (("eight" =? "eight")
-                           ∧ ("nine" =? "nine")))
-                       ∧ ((⊥
-                           ∨ ("seven" =? "seven"))
-                          ∨ (("eight" =? "eight")
-                             ∧ ("nine" =? "nine"))))
-                      ∨ (((⊥
-                           ∨ ("seven" =? "seven"))
-                          ∨ (("eight" =? "eight")
-                             ∧ ("nine" =? "nine")))
-                         ∧ ((⊤
-                             ∧ ("seven" =? "seven"))
-                            ∨ (("eight" =? "eight")
-                               ∧ ("nine" =? "nine")))))
-                     (state ((3 "x")) 0))))
+  (traces
+   red
+   (term
+    (prog ()
+          (((((⊤
+               ∧ ("seven" =? "seven"))
+              ∨ (("eight" =? "eight")
+                 ∧ ("nine" =? "nine")))
+             ∧ ((⊥
+                 ∨ ("seven" =? "seven"))
+                ∨ (("eight" =? "eight")
+                   ∧ ("nine" =? "nine"))))
+            ∨ (((⊥
+                 ∨ ("seven" =? "seven"))
+                ∨ (("eight" =? "eight")
+                   ∧ ("nine" =? "nine")))
+               ∧ ((⊤
+                   ∧ ("seven" =? "seven"))
+                  ∨ (("eight" =? "eight")
+                     ∧ ("nine" =? "nine")))))
+           (state ((3 "x")) 0)))))
 
-  (traces red (term
-               ((((⊤ (state ((3 "x")) 0))
-                  ∨
-                  (("eight" =? "eight")
-                   (state ((3 "x")) 0)))
-                 ∧
-                 (("seven" =? "seven")
-                  ∨
-                  ("nine" =? "nine")))
-                ∨
-                (("seventeen" =? "seventeen")
-                 (state ((3 "x")) 0))))))
+  (traces
+   red
+   (term
+    (prog
+     ()
+     ((((⊤ (state ((3 "x")) 0))
+        +
+        (("eight" =? "eight")
+         (state ((3 "x")) 0)))
+       ×
+       (("seven" =? "seven")
+        ∨
+        ("nine" =? "nine")))
+      +
+      (("seventeen" =? "seventeen")
+       (state ((3 "x")) 0))))))
 
-(test-results)
- 
+)
