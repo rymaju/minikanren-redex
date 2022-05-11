@@ -5,6 +5,10 @@
 (check-redundancy #t)
 ;; (current-traced-metafunctions 'all)
 
+;; Jason Hemann
+;; Initial redex lang setup from Ryan Jung
+;; Unify &c metafunctions from Phil Nguyen
+
 ;; Consider, if we separate answer streams from search tree
 ;; disjuncts, then we would need some rule to "move into the
 ;; answer stream."
@@ -575,8 +579,6 @@
      ()))))
 
   (test-results))
-
-
 
 (module+ traces
   (traces
