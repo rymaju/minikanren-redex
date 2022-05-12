@@ -13,6 +13,9 @@
 ;; disjuncts, then we would need some rule to "move into the
 ;; answer stream."
 
+;; Right now we pun between a succeed node in the language and a
+;; successful result, with that substitution. Not a sin.
+
 ;; I could also think about this as though the query is instead the
 ;; one and only call to an initial, implicitly define defrel called
 ;; "main".
@@ -54,10 +57,10 @@
   [r (variable-prefix r:)] ; to account for arbitrary relation names
   [x (variable-prefix x:)] ; to account for arbitrary parameter names
   [c natural]
-  [o symbol ; Why isn't this working
+  [o ;; symbol ; Why isn't this working
      boolean
      string]
-  [σ (state sub c)] ;; Not modeling fresh variable introduction
+  [σ (state sub c)]
   [sub ((natural t) ...)]
   [maybe-sub sub #f]
 
@@ -297,6 +300,10 @@
          (where ((natural t) ...) (unify (walk t_1 sub) (walk t_2 sub) sub))
          "unify succeed"]
 
+    [--> (in-hole EΓ (in-hole Ev (in-hole Es (⊥ σ))))
+         (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
+         "fail fails"]
+
     [--> (in-hole EΓ (in-hole Ev (in-hole Es ((t_1 =? t_2) (state sub c)))))
          (in-hole EΓ (in-hole Ev (in-hole Es (⊥ #f))))
          (where #f (unify (walk t_1 sub) (walk t_2 sub) sub))
@@ -336,6 +343,17 @@
    red
    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0))))
    (term (prog ((r:foo x:x ("seven" =? "seven"))) (⊤ (state () 0)))))
+
+  (test-->>
+   red
+   (term
+    (prog
+     ()
+     ((⊥ (state ((3 "x")) 0))
+      +
+      (("seven" =? "seven")
+       (state ((3 "x")) 0)))))
+   (term (prog () (⊤ (state ((3 "x")) 0)))))
 
   (test-->>
    red
@@ -513,7 +531,6 @@
     (prog ((r:add x:x (∃ x:a (x:a =? x:x))))
           (⊤ (state ((1 (("s" : "z") : 0))) 2)))))
 
-  ;; Questionable test right now
   (test-->>
    red
    #:equiv alpha-equivalent?
@@ -528,7 +545,6 @@
           ((r:add x:x (∃ x:a (∃ x:d (x:x =? (x:a : x:d))))))
           (⊤ (state ((0 2) (1 ("s" : ("s" : ("s" : "z"))))) 3)))))
 
-  ;; This test seems too slow or not working. Test.
   (test-->>
    red
    #:equiv alpha-equivalent?
@@ -581,6 +597,7 @@
   (test-results))
 
 (module+ traces
+
   (traces
    red
    (term (prog ((r:foo x:x ("seven" =? "seven"))) ((r:foo "seven") (state () 0)))))
