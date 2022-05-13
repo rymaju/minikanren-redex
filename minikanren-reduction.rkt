@@ -93,6 +93,7 @@
 
 (default-language L)
 
+
 (module+ test
 
   ;; FAILS
@@ -668,3 +669,13 @@
        (state ((3 "x")) 0))))))
 
 )
+
+;; I think I need to describe also that
+;;
+;; - the substitution is well-formed
+;; - the maximal largest variable in the subst is less than the counter.
+;; - that the largest variable in a term is less than the counter
+;; - that the largest variable in a goal and subst is less than the counter
+;; - that for every search tree, the above holds.
+;; - Every relation is closed wrt logic variables, to begin with.
+;; 
