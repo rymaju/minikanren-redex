@@ -678,4 +678,9 @@
 ;; - that the largest variable in a goal and subst is less than the counter
 ;; - that for every search tree, the above holds.
 ;; - Every relation is closed wrt logic variables, to begin with.
-;; 
+;;
+;; If I can do that then I redex will be able to randomly generate
+;; queries and relations and test that my reductions hold like I think
+;; they should.
+;;
+;; A principled way to think about incomplete values?
