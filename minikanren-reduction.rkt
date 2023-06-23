@@ -3,7 +3,7 @@
 (require redex/reduction-semantics)
 (require rackunit)
 (check-redundancy #t)
-;; (current-traced-metafunctions 'all)
+(current-traced-metafunctions 'all)
 
 ;; Jason Hemann
 ;; Initial redex lang setup from Ryan Jung
@@ -66,8 +66,8 @@
 
   ;-------------------------------------
   ; Values
-  [v ()        ; Empty Node
-     (⊤ σ)     ; Singleton Node
+  [v ()           ; Empty Node
+     (⊤ σ)        ; Singleton Node
      ((⊤ σ) + v)] ; Answer Disjunct (yuck the letter v and logical or look the same
 
   ;-------------------------------------
@@ -128,11 +128,9 @@
    "A goal w/a state is a query expression"
    (redex-match? L e (term ((∃ x:x (x:x =? "seven")) (state () 0)))))
 
-  (redex-match?
-   L
-   p
-   (term
-    (prog ((r:add x:x (x:x =? "cat"))) ())))
+  (test-true
+   "A program w/a single relation and an empty search tree is a program"
+   (redex-match? L p (term (prog ((r:add x:x (x:x =? "cat"))) ()))))
 
   (test-true
    "matching a small unify program with symbol constants"

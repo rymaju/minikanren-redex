@@ -13,7 +13,7 @@
   [p :== {Γ e}]
   [Γ :== ((r (x ...) g) ...)]
   
-  [e ::=      ; Expression
+  [e ::=     ; Expression
      a∞]     ; and this is the final "result"
   [a∞ ::=
       ()
@@ -346,3 +346,4 @@
         (var 3))))
      5)))
 (test-results)
+
